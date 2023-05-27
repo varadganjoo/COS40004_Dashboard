@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import "./Query.css";
+import io from "socket.io-client";
 
 function AverageComponent({ device_id, sensor_name }) {
   const [timePeriod, setTimePeriod] = useState("");
@@ -44,100 +45,111 @@ function AverageComponent({ device_id, sensor_name }) {
 
 function Query() {
   const [devices, setDevices] = useState([]);
-  const [states, setStates] = useState([]);
   const [boards, setBoards] = useState([]);
   const [sensorHistories, setSensorHistories] = useState({});
-  const [selectedDevice, setSelectedDevice] = useState("");
-  const [selectedState, setSelectedState] = useState({});
-  const [averageCalculationSensor, setAverageCalculationSensor] =
-    useState(null);
-  const [scenario, setScenario] = useState("ALL");
+  const [states, setStates] = useState([]);
+  const [selectedScenario, setSelectedScenario] = useState("ALL");
+  const [selectedDevice, setSelectedDevice] = useState("ALL");
+  const [selectedState, setSelectedState] = useState("ALL");
+  const deviceCountRef = useRef(0);
 
   useEffect(() => {
     fetch("/devices")
       .then((response) => response.json())
-      .then((data) => {
-        if (data) {
-          setDevices(data);
-          if (scenario !== "ALL") {
-            const relevantDevices = data.filter((device) =>
-              device?.name.startsWith(scenario + "_")
-            );
-            setSelectedDevice(relevantDevices[0]?._id);
-          } else {
-            setSelectedDevice("");
-          }
-        }
-      });
-
-    fetch("/states")
-      .then((response) => response.json())
-      .then((data) => {
-        if (data) {
-          setStates(data);
-        }
-      });
+      .then((data) => setDevices(data));
 
     fetch("/boards")
       .then((response) => response.json())
-      .then((data) => {
-        if (data) {
-          setBoards(data);
-          let newSensorHistories = {};
-          for (let board of data) {
-            for (let sensor of board?.sensors) {
-              let sensorName = sensor?.name.toLowerCase();
-              if (!newSensorHistories[sensorName]) {
-                newSensorHistories[sensorName] = [];
-              }
-              newSensorHistories[sensorName].push({
-                value: sensor?.value,
-                timestamp: new Date(),
-              });
-            }
-          }
-          setSensorHistories(newSensorHistories);
+      .then((data) => setBoards(data));
+
+    fetch("/states")
+      .then((response) => response.json())
+      .then((data) => setStates(data));
+
+    // Establish a WebSocket connection with the server
+    const socket = io("http://localhost:3001");
+
+    // When a new board data is received, update the state
+    socket.on("board", (board) => {
+      setBoards((boards) => [board, ...boards]);
+
+      // Save sensor histories
+      let newSensorHistories = { ...sensorHistories };
+      for (let sensor of board.sensors) {
+        let sensorName = sensor.name.toLowerCase();
+        if (!newSensorHistories[sensorName]) {
+          newSensorHistories[sensorName] = [];
         }
-      });
-  }, [scenario]);
-
-  const handleDeviceSelect = (event) => {
-    const selectedValue = event.target.value;
-    setSelectedDevice(selectedValue);
-  };
-
-  const handleStateSelect = (device, event) => {
-    setSelectedState({
-      ...selectedState,
-      [device]: event.target.value,
+        newSensorHistories[sensorName].push({
+          value: sensor.value,
+          timestamp: new Date(),
+        });
+      }
+      setSensorHistories(newSensorHistories);
     });
+
+    // Disconnect the socket when the component unmounts
+    return () => {
+      socket.disconnect();
+    };
+  }, []);
+
+  const handleScenarioChange = (event) => {
+    setSelectedScenario(event.target.value);
+    setSelectedDevice("ALL"); // reset the device selection when scenario changes
+    setSelectedState("ALL");
   };
 
-  const handleAverageCalculationClick = (sensor_name) => {
-    setAverageCalculationSensor(sensor_name);
+  const handleDeviceChange = (event) => {
+    setSelectedDevice(event.target.value);
+    setSelectedState("ALL");
   };
+
+  const handleStateChange = (event) => {
+    setSelectedState(event.target.value);
+    deviceCountRef.current = 0; // Reset the count when a new state is selected
+  };
+
+  const scenarioDevices = devices.filter((device) => {
+    if (selectedScenario === "ALL") return true;
+    return device.name.startsWith(selectedScenario + "_");
+  });
 
   const checkIdleState = (sensorName, sensorValue, parameter) => {
     const history = sensorHistories[sensorName];
-    if (!history) {
+    if (!history || history.length < 2) {
       return false;
     }
-    const currentTime = new Date();
-    const relevantHistory = history.filter(
-      (entry) => (currentTime - entry.timestamp) / 1000 <= parameter
-    );
-    if (relevantHistory.length === 0) {
-      return false;
+
+    let isIdle = true;
+    let previousValue = history[0].value;
+    let previousTimestamp = history[0].timestamp;
+
+    for (let i = 1; i < history.length; i++) {
+      let currentValue = history[i].value;
+      let currentTimestamp = history[i].timestamp;
+      let percentageChange =
+        (Math.abs(currentValue - previousValue) / previousValue) * 100;
+
+      if (
+        percentageChange > 1 ||
+        currentTimestamp - previousTimestamp > parameter * 1000
+      ) {
+        isIdle = false;
+        break;
+      }
+
+      previousValue = currentValue;
+      previousTimestamp = currentTimestamp;
     }
-    const min = Math.min(...relevantHistory.map((entry) => entry.value));
-    const max = Math.max(...relevantHistory.map((entry) => entry.value));
-    return max - min <= sensorValue * 0.01;
+
+    return isIdle;
   };
 
   const checkStateForIndividualSensor = (
+    deviceName,
     sensorName,
-    sensorValue,
-    deviceName
+    sensorValue
   ) => {
     const matchingStates = states.filter((state) => {
       return (
@@ -147,29 +159,31 @@ function Query() {
     });
 
     let result = "Default";
+    let isDeviceCounted = false; // New variable to track if a device has already been counted for the selected state
 
     for (let state of matchingStates) {
+      let parameter;
+      if (state.parameter) {
+        parameter = parseFloat(state.parameter);
+      }
       switch (state.condition) {
         case "<":
-          if (sensorValue < state.parameter) result = state.name;
+          if (sensorValue < parameter) result = state.name;
           break;
         case ">":
-          if (sensorValue > state.parameter) result = state.name;
+          if (sensorValue > parameter) result = state.name;
           break;
         case "<=":
-          if (sensorValue <= state.parameter) result = state.name;
+          if (sensorValue <= parameter) result = state.name;
           break;
         case ">=":
-          if (sensorValue >= state.parameter) result = state.name;
+          if (sensorValue >= parameter) result = state.name;
           break;
-        case "==":
-          if (sensorValue === state.parameter) result = state.name;
-          break;
-        case "!=":
-          if (sensorValue !== state.parameter) result = state.name;
+        case "=":
+          if (sensorValue === parameter) result = state.name;
           break;
         case "idle":
-          if (checkIdleState(sensorName, sensorValue, state.parameter)) {
+          if (checkIdleState(sensorName, sensorValue, parameter)) {
             result = state.name;
           }
           break;
@@ -178,143 +192,149 @@ function Query() {
       }
     }
 
+    if (result === selectedState && !isDeviceCounted) {
+      deviceCountRef.current++;
+      isDeviceCounted = true;
+    }
+
     return result;
   };
 
-  const deviceBoards =
-    selectedDevice !== ""
-      ? boards.filter((board) => board.device_id === selectedDevice)
-      : boards;
-  deviceBoards.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-  const recentBoard = deviceBoards[0];
-
-  const device = devices.find((device) => device._id === selectedDevice);
-
-  let deviceName;
-  if (device) {
-    deviceName = device.name;
-  } else {
-    console.error(`No device found with id ${selectedDevice}`);
-    deviceName = "";
-  }
-
-  const displaySensors = (sensor, index) => {
+  const displaySensors = (sensor, index, board) => {
+    const deviceName = devices.find(
+      (device) => device._id === board.device_id
+    )?.name;
     if (
-      (sensor.name === "BME" || sensor.name === "MPU") &&
+      (sensor.name === "BME" ||
+        sensor.name === "MPU" ||
+        sensor.name === "GPS") &&
       sensor.type === "i2c" &&
       Array.isArray(sensor.value)
     ) {
       const sensorProperties =
         sensor.name === "BME"
           ? ["Temperature", "Humidity", "Pressure", "Gas"]
-          : ["Acc-X", "Acc-Y", "Acc-Z", "Gyro-X", "Gyro-Y", "Gyro-Z"];
+          : sensor.name === "MPU"
+          ? ["Acc-X", "Acc-Y", "Acc-Z", "Gyro-X", "Gyro-Y", "Gyro-Z"]
+          : ["Lat", "Long"];
       return sensor.value.map((val, index) => {
         const sensorName =
           `${sensor.name}-${sensorProperties[index]}`.toLowerCase();
         const state = checkStateForIndividualSensor(
+          deviceName,
           sensorName,
-          val,
-          deviceName
+          val
         );
-        if (
-          selectedState[selectedDevice] &&
-          selectedState[selectedDevice] !== state
-        )
+        // Before returning, check if the selected state matches the sensor's state
+        if (selectedState !== "ALL" && state !== selectedState) {
           return null;
+        }
         return (
-          <div key={`${sensorName}-${index}`} className="sensorData">
-            <p>Sensor Name: {sensorName}</p>
-            <p>Sensor Value: {val}</p>
-            <p>Sensor State: {state}</p>
-            <button onClick={() => handleAverageCalculationClick(sensorName)}>
-              Find Average
-            </button>
-            {averageCalculationSensor === sensorName && (
-              <AverageComponent
-                device_id={selectedDevice}
-                sensor_name={sensorName}
-              />
-            )}
+          <div key={`${sensor.name}-${index}`}>
+            <span>Sensor Name: {sensorName}</span>
+            <span>Sensor Value: {val}</span>
+            <span>Sensor State: {state}</span>
+            <AverageComponent
+              device_id={board.device_id}
+              sensor_name={sensorName}
+            />
           </div>
         );
       });
     } else {
-      const sensorName = sensor.name.toLowerCase();
-      const sensorState = checkStateForIndividualSensor(
-        sensorName,
-        sensor.value,
-        deviceName
+      const state = checkStateForIndividualSensor(
+        deviceName,
+        sensor.name,
+        sensor.value
       );
-
-      if (
-        selectedState[selectedDevice] &&
-        selectedState[selectedDevice] !== sensorState
-      )
+      // Before returning, check if the selected state matches the sensor's state
+      if (selectedState !== "ALL" && state !== selectedState) {
         return null;
-
+      }
       return (
-        <div key={`${sensor.name}-${index}`} className="sensorData">
-          <p>Sensor Name: {sensorName}</p>
-          <p>Sensor Value: {sensor.value}</p>
-          <p>Sensor State: {sensorState}</p>
-          <button onClick={() => handleAverageCalculationClick(sensorName)}>
-            Find Average
-          </button>
-          {averageCalculationSensor === sensorName && (
-            <AverageComponent
-              device_id={selectedDevice}
-              sensor_name={sensorName}
-            />
-          )}
+        <div key={index}>
+          <span>Sensor Name: {sensor.name}</span>
+          <span>Sensor Value: {sensor.value}</span>
+          <span>Sensor State: {state}</span>
+          <AverageComponent
+            device_id={board.device_id}
+            sensor_name={sensor.name.toLowerCase()}
+          />
         </div>
       );
     }
   };
 
-  console.log(states);
-
   return (
     <div className="Query">
-      <select onChange={(event) => setScenario(event.target.value)}>
+      <select value={selectedScenario} onChange={handleScenarioChange}>
         <option value="ALL">ALL</option>
         <option value="CAR">CAR</option>
-        <option value="FACTORY">FACTORY</option>
         <option value="OFFICE">OFFICE</option>
+        <option value="FACTORY">FACTORY</option>
       </select>
-      {scenario !== "ALL" && (
+
+      {selectedScenario !== "ALL" && (
         <>
-          <select onChange={handleDeviceSelect}>
-            <option value="">ALL</option>
-            {devices
-              .filter(
-                (device) =>
-                  scenario === "ALL" || device.name.includes(`${scenario}_`)
-              )
-              .map((device) => (
-                <option key={device._id} value={device._id}>
-                  {device.name}
-                </option>
-              ))}
+          <select value={selectedDevice} onChange={handleDeviceChange}>
+            <option value="ALL">ALL</option>
+            {scenarioDevices.map((device) => (
+              <option key={device._id} value={device.name}>
+                {device.name}
+              </option>
+            ))}
           </select>
-          <select
-            onChange={(event) => handleStateSelect(selectedDevice, event)}
-            value={selectedState[selectedDevice]}
-          >
-            <option value="" default>
-              Select a state
-            </option>
+
+          <select value={selectedState} onChange={handleStateChange}>
+            <option value="ALL">ALL</option>
             {states
-              .filter((state) => state.device_name === deviceName)
-              .map((state, index) => (
-                <option key={index} value={state.name}>
-                  {state.name}
+              .filter((state) => {
+                if (selectedDevice !== "ALL")
+                  return state.device_name === selectedDevice;
+                return state.device_name.startsWith(selectedScenario + "_");
+              })
+              .map((state) => state.name)
+              .filter((value, index, self) => self.indexOf(value) === index)
+              .map((stateName, index) => (
+                <option key={index} value={stateName}>
+                  {stateName}
                 </option>
               ))}
           </select>
+
+          <div>
+            <span>
+              Number of devices in the state '{selectedState}':{" "}
+              {deviceCountRef.current}
+            </span>
+          </div>
         </>
       )}
-      {deviceName && <h2>Device: {deviceName}</h2>}{" "}
-      {recentBoard && recentBoard.sensors.map(displaySensors)}
+
+      {scenarioDevices
+        .filter((device) => {
+          if (selectedDevice === "ALL") return true;
+          return device.name === selectedDevice;
+        })
+        .map((device) => {
+          const deviceBoards = boards.filter(
+            (board) => board.device_id === device._id
+          );
+          deviceBoards.sort(
+            (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+          );
+          const recentBoard = deviceBoards[0];
+
+          return (
+            <div key={device._id}>
+              <h2>{device.name}</h2>
+              {recentBoard &&
+                recentBoard.sensors.map((sensor, index) =>
+                  displaySensors(sensor, index, recentBoard)
+                )}
+            </div>
+          );
+        })}
     </div>
   );
 }

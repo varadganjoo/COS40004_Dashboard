@@ -167,6 +167,27 @@ function Modal({ device, states, onClose }) {
                       </tr>
                     );
                   });
+                } else if (
+                  sensor.name === "GPS" &&
+                  sensor.type === "uart" &&
+                  typeof sensor.value === "object"
+                ) {
+                  return Object.entries(sensor.value).map(
+                    ([key, val], index) => {
+                      const sensorName = `${sensor.name}-${key}`.toLowerCase();
+                      const state = checkStateForIndividualSensor(
+                        sensorName,
+                        val
+                      );
+                      return (
+                        <tr key={`${sensor.name}-${index}`}>
+                          <td>{sensorName}</td>
+                          <td>{val}</td>
+                          <td>{state}</td>
+                        </tr>
+                      );
+                    }
+                  );
                 } else {
                   const state = checkStateForIndividualSensor(
                     sensor.name,
