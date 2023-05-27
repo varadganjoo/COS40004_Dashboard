@@ -53,6 +53,7 @@ function Query() {
   const [selectedState, setSelectedState] = useState("ALL");
   const deviceCountRef = useRef(0);
   const countedDevicesRef = useRef(new Set());
+  const [deviceCount, setDeviceCount] = useState(0);
 
   useEffect(() => {
     fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
@@ -108,8 +109,8 @@ function Query() {
 
   const handleStateChange = (event) => {
     setSelectedState(event.target.value);
-    deviceCountRef.current = 0; // Reset the count when a new state is selected
-    countedDevicesRef.current.clear(); // Reset the counted devices when a new state is selected
+    setDeviceCount(0); // Reset the count when a new state is selected
+    countedDevicesRef.current = []; // Also reset the array of counted devices
   };
 
   const scenarioDevices = devices.filter((device) => {
@@ -194,12 +195,12 @@ function Query() {
       }
     }
 
-    if (result === selectedState) {
-      const uniqueIdentifier = `${deviceName}-${sensorName}`;
-      if (!countedDevicesRef.current.has(uniqueIdentifier)) {
-        deviceCountRef.current++;
-        countedDevicesRef.current.add(uniqueIdentifier);
-      }
+    if (
+      result === selectedState &&
+      !countedDevicesRef.current.includes(deviceName)
+    ) {
+      countedDevicesRef.current.push(deviceName);
+      setDeviceCount((prevCount) => prevCount + 1); // Increment the device count
     }
 
     return result;
@@ -309,8 +310,8 @@ function Query() {
 
           <div>
             <span>
-              Number of devices in the state '{selectedState}':{" "}
-              {deviceCountRef.current}
+              Number of devices in the state '{selectedState}': {deviceCount}{" "}
+              {/* Now use deviceCount instead of deviceCountRef.current */}
             </span>
           </div>
         </>
