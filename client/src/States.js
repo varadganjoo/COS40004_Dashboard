@@ -17,7 +17,7 @@ function States() {
   const [selectedAttribute, setSelectedAttribute] = useState("");
 
   useEffect(() => {
-    fetch("/states")
+    fetch("https://cos-40004-dashboard-be-phi.vercel.app/states")
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP error ${res.status}`);
@@ -27,7 +27,7 @@ function States() {
       .then((data) => setStates(data))
       .catch((err) => console.error("Error fetching states:", err));
 
-    fetch("/devices")
+    fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP error ${res.status}`);
@@ -42,7 +42,9 @@ function States() {
     const selectedDeviceId = e.target.value;
     setNewState({ ...newState, device_name: selectedDeviceId });
 
-    fetch(`/boards/${selectedDeviceId}`)
+    fetch(
+      `https://cos-40004-dashboard-be-phi.vercel.app/boards/${selectedDeviceId}`
+    )
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP error ${res.status}`);
@@ -102,7 +104,7 @@ function States() {
       sensor_name: sensorName,
     };
 
-    fetch("/states", {
+    fetch("https://cos-40004-dashboard-be-phi.vercel.app/states", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(stateToSubmit),

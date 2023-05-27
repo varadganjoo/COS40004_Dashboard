@@ -9,11 +9,11 @@ function Dashboard() {
   const [filter, setFilter] = useState("");
 
   useEffect(() => {
-    fetch("/devices")
+    fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
       .then((response) => response.json())
       .then((data) => setDevices(data));
 
-    fetch("/states")
+    fetch("https://cos-40004-dashboard-be-phi.vercel.app/states")
       .then((response) => response.json())
       .then((data) => setStates(data));
   }, []);

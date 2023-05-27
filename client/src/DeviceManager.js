@@ -8,7 +8,7 @@ const DeviceManager = () => {
   const [device, setDevice] = useState(null);
 
   useEffect(() => {
-    fetch("/devices")
+    fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP error ${res.status}`);

@@ -12,7 +12,7 @@ function AverageComponent({ device_id, sensor_name }) {
 
   const handleAverageCalculation = () => {
     fetch(
-      `/boards/device/${device_id}/sensor/${sensor_name}?timePeriod=${timePeriod}`
+      `https://cos-40004-dashboard-be-phi.vercel.app/boards/device/${device_id}/sensor/${sensor_name}?timePeriod=${timePeriod}`
     )
       .then((response) => {
         console.log(response);
@@ -54,20 +54,20 @@ function Query() {
   const deviceCountRef = useRef(0);
 
   useEffect(() => {
-    fetch("/devices")
+    fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
       .then((response) => response.json())
       .then((data) => setDevices(data));
 
-    fetch("/boards")
+    fetch("https://cos-40004-dashboard-be-phi.vercel.app/boards")
       .then((response) => response.json())
       .then((data) => setBoards(data));
 
-    fetch("/states")
+    fetch("https://cos-40004-dashboard-be-phi.vercel.app/states")
       .then((response) => response.json())
       .then((data) => setStates(data));
 
     // Establish a WebSocket connection with the server
-    const socket = io("http://localhost:3001");
+    const socket = io("https://cos-40004-dashboard-be-phi.vercel.app");
 
     // When a new board data is received, update the state
     socket.on("board", (board) => {
