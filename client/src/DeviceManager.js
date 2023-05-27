@@ -45,6 +45,7 @@ const DeviceManager = () => {
         console.log(res, res.status);
         if (!res.ok) {
           // Treat no devices as the same as the first device
+          console.log(true);
           if (res.status === 404) {
             return null;
           }
