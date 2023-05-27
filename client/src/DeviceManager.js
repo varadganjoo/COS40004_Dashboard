@@ -42,6 +42,10 @@ const DeviceManager = () => {
     )
       .then((res) => {
         if (!res.ok) {
+          // Treat no devices as the same as the first device
+          if (res.status === 404) {
+            return null;
+          }
           throw new Error(`HTTP error ${res.status}`);
         }
         return res.json();
