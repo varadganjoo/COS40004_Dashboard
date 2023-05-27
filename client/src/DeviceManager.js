@@ -37,21 +37,19 @@ const DeviceManager = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    console.log(newName);
     fetch(
       `https://cos-40004-dashboard-be-phi.vercel.app/devices/max/${newName}`
     )
       .then((res) => {
-        console.log(res, res.status);
         if (!res.ok) {
-          // Treat no devices as the same as the first device
-          console.log(true);
-          if (res.status === 404) {
-            return null;
-          }
           throw new Error(`HTTP error ${res.status}`);
         }
         return res.json();
+      })
+      .catch((err) => {
+        console.error("Error fetching max device:", err);
+        // Treat it as no max device found.
+        return null;
       })
       .then((maxDevice) => {
         const maxNumber = maxDevice
@@ -85,8 +83,7 @@ const DeviceManager = () => {
             );
           })
           .catch((err) => console.error("Error updating device:", err));
-      })
-      .catch((err) => console.error("Error fetching max device:", err));
+      });
   };
 
   return (
