@@ -37,7 +37,9 @@ const DeviceManager = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    fetch(`/devices/max/${newName}`)
+    fetch(
+      `https://cos-40004-dashboard-be-phi.vercel.app/devices/max/${newName}`
+    )
       .then((res) => {
         if (!res.ok) {
           throw new Error(`HTTP error ${res.status}`);
@@ -50,13 +52,16 @@ const DeviceManager = () => {
           : 0;
         const nextName = `${newName}_${maxNumber + 1}`;
 
-        fetch(`/devices/${device._id}`, {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ name: nextName }),
-        })
+        fetch(
+          `https://cos-40004-dashboard-be-phi.vercel.app/devices/${device._id}`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ name: nextName }),
+          }
+        )
           .then((res) => {
             if (!res.ok) {
               throw new Error(`HTTP error ${res.status}`);
