@@ -37,10 +37,12 @@ const DeviceManager = () => {
   const handleSubmit = (e) => {
     e.preventDefault();
 
+    console.log(newName);
     fetch(
       `https://cos-40004-dashboard-be-phi.vercel.app/devices/max/${newName}`
     )
       .then((res) => {
+        console.log(res, res.status);
         if (!res.ok) {
           // Treat no devices as the same as the first device
           if (res.status === 404) {
