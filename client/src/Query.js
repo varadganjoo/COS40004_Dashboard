@@ -125,25 +125,52 @@ function Query() {
     }
 
     let isIdle = true;
-    let previousValue = history[0].value;
-    let previousTimestamp = history[0].timestamp;
 
-    for (let i = 1; i < history.length; i++) {
-      let currentValue = history[i].value;
-      let currentTimestamp = history[i].timestamp;
-      let percentageChange =
-        (Math.abs(currentValue - previousValue) / previousValue) * 100;
+    if (sensorName === "gps" && Array.isArray(sensorValue)) {
+      for (let valueIndex = 0; valueIndex < sensorValue.length; valueIndex++) {
+        let previousValue = history[0].value[valueIndex];
+        let previousTimestamp = history[0].timestamp;
 
-      if (
-        percentageChange > 1 ||
-        currentTimestamp - previousTimestamp > parameter * 1000
-      ) {
-        isIdle = false;
-        break;
+        for (let i = 1; i < history.length; i++) {
+          let currentValue = history[i].value[valueIndex];
+          let currentTimestamp = history[i].timestamp;
+          let percentageChange =
+            (Math.abs(currentValue - previousValue) / previousValue) * 100;
+
+          if (
+            percentageChange > 1 ||
+            currentTimestamp - previousTimestamp > parameter * 1000
+          ) {
+            isIdle = false;
+            break;
+          }
+
+          previousValue = currentValue;
+          previousTimestamp = currentTimestamp;
+        }
+        if (!isIdle) break;
       }
+    } else {
+      let previousValue = history[0].value;
+      let previousTimestamp = history[0].timestamp;
 
-      previousValue = currentValue;
-      previousTimestamp = currentTimestamp;
+      for (let i = 1; i < history.length; i++) {
+        let currentValue = history[i].value;
+        let currentTimestamp = history[i].timestamp;
+        let percentageChange =
+          (Math.abs(currentValue - previousValue) / previousValue) * 100;
+
+        if (
+          percentageChange > 1 ||
+          currentTimestamp - previousTimestamp > parameter * 1000
+        ) {
+          isIdle = false;
+          break;
+        }
+
+        previousValue = currentValue;
+        previousTimestamp = currentTimestamp;
+      }
     }
 
     return isIdle;
@@ -210,19 +237,17 @@ function Query() {
     const deviceName = devices.find(
       (device) => device._id === board.device_id
     )?.name;
+
     if (
-      (sensor.name === "BME" ||
-        sensor.name === "MPU" ||
-        sensor.name === "GPS") &&
+      (sensor.name === "BME" || sensor.name === "MPU") &&
       sensor.type === "i2c" &&
       Array.isArray(sensor.value)
     ) {
       const sensorProperties =
         sensor.name === "BME"
           ? ["Temperature", "Humidity", "Pressure", "Gas"]
-          : sensor.name === "MPU"
-          ? ["Acc-X", "Acc-Y", "Acc-Z", "Gyro-X", "Gyro-Y", "Gyro-Z"]
-          : ["Lat", "Long"];
+          : ["Acc-X", "Acc-Y", "Acc-Z", "Gyro-X", "Gyro-Y", "Gyro-Z"];
+
       return sensor.value.map((val, index) => {
         const sensorName =
           `${sensor.name}-${sensorProperties[index]}`.toLowerCase();

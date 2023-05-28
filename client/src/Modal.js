@@ -49,25 +49,52 @@ function Modal({ device, states, onClose }) {
     }
 
     let isIdle = true;
-    let previousValue = history[0].value;
-    let previousTimestamp = history[0].timestamp;
 
-    for (let i = 1; i < history.length; i++) {
-      let currentValue = history[i].value;
-      let currentTimestamp = history[i].timestamp;
-      let percentageChange =
-        (Math.abs(currentValue - previousValue) / previousValue) * 100;
+    if (sensorName === "gps" && Array.isArray(sensorValue)) {
+      for (let valueIndex = 0; valueIndex < sensorValue.length; valueIndex++) {
+        let previousValue = history[0].value[valueIndex];
+        let previousTimestamp = history[0].timestamp;
 
-      if (
-        percentageChange > 1 ||
-        currentTimestamp - previousTimestamp > parameter * 1000
-      ) {
-        isIdle = false;
-        break;
+        for (let i = 1; i < history.length; i++) {
+          let currentValue = history[i].value[valueIndex];
+          let currentTimestamp = history[i].timestamp;
+          let percentageChange =
+            (Math.abs(currentValue - previousValue) / previousValue) * 100;
+
+          if (
+            percentageChange > 1 ||
+            currentTimestamp - previousTimestamp > parameter * 1000
+          ) {
+            isIdle = false;
+            break;
+          }
+
+          previousValue = currentValue;
+          previousTimestamp = currentTimestamp;
+        }
+        if (!isIdle) break;
       }
+    } else {
+      let previousValue = history[0].value;
+      let previousTimestamp = history[0].timestamp;
 
-      previousValue = currentValue;
-      previousTimestamp = currentTimestamp;
+      for (let i = 1; i < history.length; i++) {
+        let currentValue = history[i].value;
+        let currentTimestamp = history[i].timestamp;
+        let percentageChange =
+          (Math.abs(currentValue - previousValue) / previousValue) * 100;
+
+        if (
+          percentageChange > 1 ||
+          currentTimestamp - previousTimestamp > parameter * 1000
+        ) {
+          isIdle = false;
+          break;
+        }
+
+        previousValue = currentValue;
+        previousTimestamp = currentTimestamp;
+      }
     }
 
     return isIdle;
@@ -167,27 +194,6 @@ function Modal({ device, states, onClose }) {
                       </tr>
                     );
                   });
-                } else if (
-                  sensor.name === "GPS" &&
-                  sensor.type === "uart" &&
-                  typeof sensor.value === "object"
-                ) {
-                  return Object.entries(sensor.value).map(
-                    ([key, val], index) => {
-                      const sensorName = `${sensor.name}-${key}`.toLowerCase();
-                      const state = checkStateForIndividualSensor(
-                        sensorName,
-                        val
-                      );
-                      return (
-                        <tr key={`${sensor.name}-${index}`}>
-                          <td>{sensorName}</td>
-                          <td>{val}</td>
-                          <td>{state}</td>
-                        </tr>
-                      );
-                    }
-                  );
                 } else {
                   const state = checkStateForIndividualSensor(
                     sensor.name,
