@@ -315,7 +315,10 @@ function Query() {
         <div key={index}>
           <span>Sensor Name: {sensor.name}</span>
           <span>
-            Sensor Value: {sensorName === "gps" ? `${val[0]}, ${val[1]}` : val}
+            Sensor Value:{" "}
+            {sensor.name === "gps"
+              ? `${sensor.value[0]}, ${sensor.value[1]}`
+              : val}
           </span>
 
           <span>Sensor State: {state}</span>
