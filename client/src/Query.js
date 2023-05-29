@@ -94,36 +94,52 @@ function Query() {
   // The useEffect hook is used to fetch the initial data and set up a WebSocket connection
   // for live updates once the component is mounted.
   useEffect(() => {
-    fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
-      .then((response) => response.json())
-      .then((data) => setDevices(data));
+    const fetchData = async () => {
+      try {
+        const deviceResponse = await fetch(
+          "https://cos-40004-dashboard-be-phi.vercel.app/devices"
+        );
+        const boardResponse = await fetch(
+          "https://cos-40004-dashboard-be-phi.vercel.app/boards"
+        );
+        const stateResponse = await fetch(
+          "https://cos-40004-dashboard-be-phi.vercel.app/states"
+        );
 
-    fetch("https://cos-40004-dashboard-be-phi.vercel.app/boards")
-      .then((response) => response.json())
-      .then((data) => setBoards(data));
+        const deviceData = await deviceResponse.json();
+        const boardData = await boardResponse.json();
+        const stateData = await stateResponse.json();
 
-    fetch("https://cos-40004-dashboard-be-phi.vercel.app/states")
-      .then((response) => response.json())
-      .then((data) => setStates(data));
+        setDevices(deviceData);
+        setBoards(boardData);
+        setStates(stateData);
 
-    const fetchSensorHistories = async () => {
-      const newSensorHistories = { ...sensorHistories };
-      for (const device of devices) {
-        for (const sensor of device.sensors) {
-          const response = await fetch(
-            `https://cos-40004-dashboard-be-phi.vercel.app/${device._id}/sensors/${sensor.name}/history`
-          );
-          const data = await response.json();
-          newSensorHistories[sensor.name.toLowerCase()] = data.map((item) => ({
-            value: item.value,
-            timestamp: new Date(item.timestamp),
-          }));
+        const newSensorHistories = { ...sensorHistories };
+        for (const device of deviceData) {
+          for (const sensor of device.sensors) {
+            const response = await fetch(
+              `https://cos-40004-dashboard-be-phi.vercel.app/${device._id}/sensors/${sensor.name}/history`
+            );
+            const data = await response.json();
+            newSensorHistories[sensor.name.toLowerCase()] = data.map(
+              (item) => ({
+                value: item.value,
+                timestamp: new Date(item.timestamp),
+              })
+            );
+          }
         }
+        setSensorHistories(newSensorHistories);
+      } catch (error) {
+        console.error("Failed to fetch data", error);
       }
-      setSensorHistories(newSensorHistories);
     };
 
-    fetchSensorHistories();
+    fetchData();
+    const interval = setInterval(fetchData, 5000); // Poll every 5 seconds.
+
+    // Cleanup function to stop the interval when the component is unmounted.
+    return () => clearInterval(interval);
   }, []);
 
   // These functions handle changes in the selected scenario, device, and state
