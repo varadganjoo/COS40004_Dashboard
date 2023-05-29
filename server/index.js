@@ -30,15 +30,10 @@ app.use("/devices", require("./routes/devices"));
 app.use("/states", require("./routes/states"));
 
 // Set up server to listen on port 3000
-// const server = app.listen(3001, () => console.log("Server running..."));
+const server = app.listen(3001, () => console.log("Server running..."));
 
 // Set up Socket.IO
-const io = require('socket.io')(server, {
-  cors: {
-    origin: "https://cos-40004-dashboard-be-phi.vercel.app",
-    methods: ["GET", "POST"]
-  }
-});
+const io = socketio(server);
 
 io.on("connection", (socket) => {
   console.log("New connection: " + socket.id);

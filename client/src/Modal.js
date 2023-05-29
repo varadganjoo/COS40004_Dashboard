@@ -8,7 +8,7 @@ function Modal({ device, states, onClose }) {
 
   useEffect(() => {
     // Establish a WebSocket connection with the server
-    const socket = io("https://cos-40004-dashboard-be-phi.vercel.app");
+    const socket = io("https://cos-40004-dashboard-be-phi.vercel.app:3001");
 
     // When a new board data is received, update the state
     socket.on("board", (board) => {
