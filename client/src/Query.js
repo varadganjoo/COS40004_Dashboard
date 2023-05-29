@@ -11,13 +11,14 @@ function AverageComponent({ device_id, sensor_name }) {
     setTimePeriod(event.target.value);
   };
 
+  console.log(sensor_name)
+
   const handleAverageCalculation = () => {
     if (sensor_name === "gps") {
       fetch(
         `https://cos-40004-dashboard-be-phi.vercel.app/boards/device/${device_id}/sensor/${sensor_name}/distance?timePeriod=${timePeriod}`
       )
         .then((response) => {
-          console.log(response);
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
