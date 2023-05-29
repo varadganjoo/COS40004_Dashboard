@@ -2,11 +2,13 @@ import { useState, useEffect } from "react";
 import "./DeviceManager.css";
 
 const DeviceManager = () => {
-  const [devices, setDevices] = useState([]);
-  const [editing, setEditing] = useState(false);
-  const [newName, setNewName] = useState("");
-  const [device, setDevice] = useState(null);
+  // Define state variables
+  const [devices, setDevices] = useState([]); // Holds the list of devices
+  const [editing, setEditing] = useState(false); // Boolean state for editing mode
+  const [newName, setNewName] = useState(""); // Holds the new name for the device
+  const [device, setDevice] = useState(null); // Holds the current device for editing
 
+  // On component mount, fetch devices data from the server
   useEffect(() => {
     fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
       .then((res) => {
@@ -28,12 +30,14 @@ const DeviceManager = () => {
       .catch((err) => console.error("Error fetching devices:", err));
   }, []);
 
+  // Function to handle Edit click, sets the editing mode, current device, and new name
   const handleEdit = (device) => {
     setEditing(true);
     setDevice(device);
     setNewName(device.name);
   };
 
+  // Function to handle Submit, fetches the max device with the new name and patches the current device with a new name
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -76,6 +80,7 @@ const DeviceManager = () => {
           .then((updatedDevice) => {
             setEditing(false);
             setDevice(updatedDevice);
+            // Update the devices list with the updated device
             setDevices(
               devices.map((dev) =>
                 dev._id === updatedDevice._id ? updatedDevice : dev
@@ -86,6 +91,7 @@ const DeviceManager = () => {
       });
   };
 
+  // Render the component
   return (
     <div>
       {devices.map((device) => (
@@ -96,6 +102,7 @@ const DeviceManager = () => {
         </div>
       ))}
 
+      {/* Display form for editing device name when editing mode is on */}
       {editing && (
         <form className="DevForm" onSubmit={handleSubmit}>
           <h3>New Name:</h3>

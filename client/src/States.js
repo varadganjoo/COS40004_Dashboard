@@ -1,10 +1,14 @@
+// Import necessary dependencies
 import React, { useState, useEffect } from "react";
-import "./States.css";
+import "./States.css"; // Import the CSS file for styling
 
+// Define the States function component
 function States() {
-  const [states, setStates] = useState([]);
-  const [devices, setDevices] = useState([]);
-  const [sensors, setSensors] = useState([]);
+  // Define the state variables
+  const [states, setStates] = useState([]); // Stores the list of states
+  const [devices, setDevices] = useState([]); // Stores the list of devices
+  const [sensors, setSensors] = useState([]); // Stores the list of sensors
+  // Stores the new state that will be added
   const [newState, setNewState] = useState({
     name: "",
     device_name: "",
@@ -13,10 +17,13 @@ function States() {
     parameter: "",
   });
 
+  // Stores sensor attributes
   const [sensorAttributes, setSensorAttributes] = useState([]);
-  const [selectedAttribute, setSelectedAttribute] = useState("");
+  const [selectedAttribute, setSelectedAttribute] = useState(""); // Stores the selected attribute
 
+  // Fetch the states and devices when the component mounts
   useEffect(() => {
+    // Fetch and store states
     fetch("https://cos-40004-dashboard-be-phi.vercel.app/states")
       .then((res) => {
         if (!res.ok) {
@@ -27,6 +34,7 @@ function States() {
       .then((data) => setStates(data))
       .catch((err) => console.error("Error fetching states:", err));
 
+    // Fetch and store devices
     fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
       .then((res) => {
         if (!res.ok) {
@@ -38,10 +46,12 @@ function States() {
       .catch((err) => console.error("Error fetching devices:", err));
   }, []);
 
+  // Handle the change in the selected device
   const handleDeviceChange = (e) => {
     const selectedDeviceId = e.target.value;
     setNewState({ ...newState, device_name: selectedDeviceId });
 
+    // Fetch and store the sensors of the selected device
     fetch(
       `https://cos-40004-dashboard-be-phi.vercel.app/boards/${selectedDeviceId}`
     )
@@ -55,14 +65,17 @@ function States() {
       .catch((err) => console.error("Error fetching device sensors:", err));
   };
 
+  // Handle the change in the input fields
   const handleInputChange = (e) => {
     setNewState({ ...newState, [e.target.name]: e.target.value });
   };
 
+  // Handle the change in the selected sensor
   const handleSensorChange = (e) => {
     const selectedSensor = e.target.value;
     setNewState({ ...newState, sensor_name: selectedSensor });
 
+    // Set sensor attributes based on the selected sensor
     if (selectedSensor === "BME") {
       setSensorAttributes(["temperature", "humidity", "pressure", "gas"]);
     } else if (selectedSensor === "MPU") {
@@ -79,11 +92,13 @@ function States() {
     }
   };
 
+  // Handle the change in the selected attribute
   const handleAttributeChange = (e) => {
     const selectedAttribute = e.target.value;
     setSelectedAttribute(selectedAttribute);
   };
 
+  // Handle the submission of the new state
   const handleSubmit = (e) => {
     e.preventDefault();
 
@@ -104,6 +119,7 @@ function States() {
       sensor_name: sensorName,
     };
 
+    // POST the new state to the server
     fetch("https://cos-40004-dashboard-be-phi.vercel.app/states", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -128,6 +144,7 @@ function States() {
       .catch((err) => console.error("Error submitting new state:", err));
   };
 
+  // Render the UI of the component
   return (
     <div className="states-page">
       <h1>States</h1>

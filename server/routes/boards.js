@@ -72,22 +72,16 @@ router.get("/device/:device_id/sensor/:sensor_name", async (req, res) => {
   let s_name = sensor_name;
   let index = 0;
 
-  // console.log(sensor_name);
-
   const timePeriodInMilliseconds = timePeriod * 1000;
 
   const now = new Date();
   now.setHours(now.getHours());
   const startTime = new Date(now.getTime() - timePeriodInMilliseconds);
 
-  // console.log(sensor_name);
-
   if (sensor_name.includes("mpu")) {
     s_name = "mpu";
-    // console.log(true);
   } else if (sensor_name.includes("bme")) {
     s_name = "bme";
-    // console.log(false);
   }
 
   if (s_name === "bme" || s_name === "mpu") {
@@ -134,6 +128,7 @@ router.get("/device/:device_id/sensor/:sensor_name", async (req, res) => {
   }
 });
 
+//calculate distance based on gps
 router.get(
   "/device/:device_id/sensor/:sensor_name/distance",
   async (req, res) => {
@@ -186,7 +181,5 @@ router.get(
     }
   }
 );
-
-module.exports = router;
 
 module.exports = router;

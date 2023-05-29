@@ -2,19 +2,24 @@ import React, { useEffect, useState, useRef } from "react";
 import "./Query.css";
 import io from "socket.io-client";
 
+// This component calculates the average sensor reading or GPS distance travelled
+// within a specified time period, and displays it.
 function AverageComponent({ device_id, sensor_name }) {
+  // Initialise state variables
   const [timePeriod, setTimePeriod] = useState("");
   const [average, setAverage] = useState("");
   const [distanceTravelled, setDistanceTravelled] = useState("");
 
+  // Function to handle changes in the timePeriod input field
   const handleInputChange = (event) => {
     setTimePeriod(event.target.value);
   };
 
-  console.log(sensor_name);
-
+  // Function to calculate the average sensor reading or GPS distance travelled
   const handleAverageCalculation = () => {
+    // Perform a different calculation depending on the sensor name
     if (sensor_name === "gps") {
+      // Fetch the GPS distance travelled from the server
       fetch(
         `https://cos-40004-dashboard-be-phi.vercel.app/boards/device/${device_id}/sensor/${sensor_name}/distance?timePeriod=${timePeriod}`
       )
@@ -31,11 +36,11 @@ function AverageComponent({ device_id, sensor_name }) {
           console.log("There was an error!", error);
         });
     } else {
+      // Fetch the average sensor reading from the server
       fetch(
         `https://cos-40004-dashboard-be-phi.vercel.app/boards/device/${device_id}/sensor/${sensor_name}?timePeriod=${timePeriod}`
       )
         .then((response) => {
-          console.log(response);
           if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
           }
@@ -50,6 +55,7 @@ function AverageComponent({ device_id, sensor_name }) {
     }
   };
 
+  // Render the component
   return (
     <div>
       <input
@@ -68,7 +74,12 @@ function AverageComponent({ device_id, sensor_name }) {
   );
 }
 
+// The Query function is a React component that handles the display and
+// interactions for devices, boards, sensor history, and states.
+// It also provides options for filtering data based on scenario, device, and state.
 function Query() {
+  // Create state variables using useState for storing the fetched data and selected options.
+  // useRef is used for storing mutable values that might change over the lifecycle of the component.
   const [devices, setDevices] = useState([]);
   const [boards, setBoards] = useState([]);
   const [sensorHistories, setSensorHistories] = useState({});
@@ -80,6 +91,8 @@ function Query() {
   const countedDevicesRef = useRef(new Set());
   const [deviceCount, setDeviceCount] = useState(0);
 
+  // The useEffect hook is used to fetch the initial data and set up a WebSocket connection
+  // for live updates once the component is mounted.
   useEffect(() => {
     fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
       .then((response) => response.json())
@@ -121,6 +134,7 @@ function Query() {
     };
   }, []);
 
+  // These functions handle changes in the selected scenario, device, and state
   const handleScenarioChange = (event) => {
     setSelectedScenario(event.target.value);
     setSelectedDevice("ALL"); // reset the device selection when scenario changes
@@ -138,11 +152,13 @@ function Query() {
     countedDevicesRef.current = []; // Also reset the array of counted devices
   };
 
+  // This function filters devices based on the selected scenario
   const scenarioDevices = devices.filter((device) => {
     if (selectedScenario === "ALL") return true;
     return device.name.startsWith(selectedScenario + "_");
   });
 
+  // This function checks if a sensor has been idle based on its historical data
   const checkIdleState = (sensorName, sensorValue, parameter) => {
     const history = sensorHistories[sensorName];
     if (!history || history.length < 2) {
@@ -201,6 +217,7 @@ function Query() {
     return isIdle;
   };
 
+  // This function checks the state for each sensor and updates the device count for the selected state
   const checkStateForIndividualSensor = (
     deviceName,
     sensorName,
@@ -258,6 +275,7 @@ function Query() {
     return result;
   };
 
+  // This function generates the JSX for displaying sensor data
   const displaySensors = (sensor, index, board) => {
     const deviceName = devices.find(
       (device) => device._id === board.device_id
@@ -331,6 +349,8 @@ function Query() {
     }
   };
 
+  // The component returns JSX that includes dropdown menus for selecting a scenario, device, and state, 
+  // and a list of devices and their sensor data.
   return (
     <div className="Query">
       <select value={selectedScenario} onChange={handleScenarioChange}>
