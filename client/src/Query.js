@@ -5,28 +5,48 @@ import io from "socket.io-client";
 function AverageComponent({ device_id, sensor_name }) {
   const [timePeriod, setTimePeriod] = useState("");
   const [average, setAverage] = useState("");
+  const [distanceTravelled, setDistanceTravelled] = useState("");
 
   const handleInputChange = (event) => {
     setTimePeriod(event.target.value);
   };
 
   const handleAverageCalculation = () => {
-    fetch(
-      `https://cos-40004-dashboard-be-phi.vercel.app/boards/device/${device_id}/sensor/${sensor_name}?timePeriod=${timePeriod}`
-    )
-      .then((response) => {
-        console.log(response);
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-        return response.json();
-      })
-      .then((data) => {
-        setAverage(data.average);
-      })
-      .catch((error) => {
-        console.log("There was an error!", error);
-      });
+    if (sensor_name === "gps") {
+      fetch(
+        `https://cos-40004-dashboard-be-phi.vercel.app/boards/device/${device_id}/sensor/${sensor_name}/distance?timePeriod=${timePeriod}`
+      )
+        .then((response) => {
+          console.log(response);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          setDistanceTravelled(data.distance);
+        })
+        .catch((error) => {
+          console.log("There was an error!", error);
+        });
+    } else {
+      fetch(
+        `https://cos-40004-dashboard-be-phi.vercel.app/boards/device/${device_id}/sensor/${sensor_name}?timePeriod=${timePeriod}`
+      )
+        .then((response) => {
+          console.log(response);
+          if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+          }
+          return response.json();
+        })
+        .then((data) => {
+          setAverage(data.average);
+        })
+        .catch((error) => {
+          console.log("There was an error!", error);
+        });
+    }
   };
 
   return (
@@ -37,8 +57,12 @@ function AverageComponent({ device_id, sensor_name }) {
         value={timePeriod}
         onChange={handleInputChange}
       />
-      <button onClick={handleAverageCalculation}>Calculate Average</button>
-      {average && <p>Average: {average}</p>}
+      <button onClick={handleAverageCalculation}>
+        Calculate {sensor_name === "gps" ? "Distance" : "Average"}
+      </button>
+      {sensor_name === "gps"
+        ? distanceTravelled && <p>Distance Travelled: {distanceTravelled} km</p>
+        : average && <p>Average: {average}</p>}
     </div>
   );
 }
