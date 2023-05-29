@@ -85,6 +85,7 @@ async function Query() {
   const [selectedDevice, setSelectedDevice] = useState("ALL");
   const [selectedState, setSelectedState] = useState("ALL");
   const [deviceCount, setDeviceCount] = useState(0);
+  const countedDevicesRef = useRef(new Set());
 
   useEffect(() => {
     const fetchData = async () => {
