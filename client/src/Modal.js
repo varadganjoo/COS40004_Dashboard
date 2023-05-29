@@ -36,62 +36,98 @@ function Modal({ device, states, onClose }) {
     fetchInitialSensorHistories();
   }, [device._id]);
 
-  const checkIdleState = (sensorName, sensorValue, parameter) => {
-    const history = sensorHistories[sensorName];
-    if (!history || history.length < 2) {
+  // const checkIdleState = (sensorName, sensorValue, parameter) => {
+  //   const history = sensorHistories[sensorName];
+  //   if (!history || history.length < 2) {
+  //     return false;
+  //   }
+
+  //   let isIdle = true;
+
+  //   if (sensorName === "gps" && Array.isArray(sensorValue)) {
+  //     for (let valueIndex = 0; valueIndex < sensorValue.length; valueIndex++) {
+  //       let previousValue = history[0].value[valueIndex];
+  //       let previousTimestamp = history[0].timestamp;
+
+  //       for (let i = 1; i < history.length; i++) {
+  //         let currentValue = history[i].value[valueIndex];
+  //         let currentTimestamp = history[i].timestamp;
+  //         let percentageChange =
+  //           (Math.abs(currentValue - previousValue) / previousValue) * 100;
+
+  //         if (
+  //           percentageChange > 1 ||
+  //           currentTimestamp - previousTimestamp > parameter * 1000
+  //         ) {
+  //           isIdle = false;
+  //           break;
+  //         }
+
+  //         previousValue = currentValue;
+  //         previousTimestamp = currentTimestamp;
+  //       }
+  //       if (!isIdle) break;
+  //     }
+  //   } else {
+  //     let previousValue = history[0].value;
+  //     let previousTimestamp = history[0].timestamp;
+
+  //     for (let i = 1; i < history.length; i++) {
+  //       let currentValue = history[i].value;
+  //       let currentTimestamp = history[i].timestamp;
+  //       let percentageChange =
+  //         (Math.abs(currentValue - previousValue) / previousValue) * 100;
+
+  //       if (
+  //         percentageChange > 1 ||
+  //         currentTimestamp - previousTimestamp > parameter * 1000
+  //       ) {
+  //         isIdle = false;
+  //         break;
+  //       }
+
+  //       previousValue = currentValue;
+  //       previousTimestamp = currentTimestamp;
+  //     }
+  //   }
+
+  //   return isIdle;
+  // };
+
+  const checkIdleState = async (deviceName, sensorName, parameter) => {
+    const now = new Date();
+    const then = new Date(now.getTime() - parameter * 1000); // x seconds ago
+
+    // Convert to ISO format and remove the 'Z' at the end to fit with MongoDB's date format
+    const nowISO = now.toISOString().slice(0, -1);
+    const thenISO = then.toISOString().slice(0, -1);
+
+    try {
+      const currentDataResponse = await fetch(
+        `https://cos-40004-dashboard-be-phi.vercel.app/${deviceName}/sensors/${sensorName}/history?timestamp=${nowISO}`
+      );
+      const pastDataResponse = await fetch(
+        `https://cos-40004-dashboard-be-phi.vercel.app/${deviceName}/sensors/${sensorName}/history?timestamp=${thenISO}`
+      );
+
+      const currentData = await currentDataResponse.json();
+      const pastData = await pastDataResponse.json();
+
+      if (
+        currentData.length > 0 &&
+        pastData.length > 0 &&
+        Math.abs(
+          (currentData[0].value - pastData[0].value) / pastData[0].value
+        ) <= 0.05
+      ) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.log(error);
       return false;
     }
-
-    let isIdle = true;
-
-    if (sensorName === "gps" && Array.isArray(sensorValue)) {
-      for (let valueIndex = 0; valueIndex < sensorValue.length; valueIndex++) {
-        let previousValue = history[0].value[valueIndex];
-        let previousTimestamp = history[0].timestamp;
-
-        for (let i = 1; i < history.length; i++) {
-          let currentValue = history[i].value[valueIndex];
-          let currentTimestamp = history[i].timestamp;
-          let percentageChange =
-            (Math.abs(currentValue - previousValue) / previousValue) * 100;
-
-          if (
-            percentageChange > 1 ||
-            currentTimestamp - previousTimestamp > parameter * 1000
-          ) {
-            isIdle = false;
-            break;
-          }
-
-          previousValue = currentValue;
-          previousTimestamp = currentTimestamp;
-        }
-        if (!isIdle) break;
-      }
-    } else {
-      let previousValue = history[0].value;
-      let previousTimestamp = history[0].timestamp;
-
-      for (let i = 1; i < history.length; i++) {
-        let currentValue = history[i].value;
-        let currentTimestamp = history[i].timestamp;
-        let percentageChange =
-          (Math.abs(currentValue - previousValue) / previousValue) * 100;
-
-        if (
-          percentageChange > 1 ||
-          currentTimestamp - previousTimestamp > parameter * 1000
-        ) {
-          isIdle = false;
-          break;
-        }
-
-        previousValue = currentValue;
-        previousTimestamp = currentTimestamp;
-      }
-    }
-
-    return isIdle;
   };
 
   const checkStateForIndividualSensor = (sensorName, sensorValue) => {
@@ -122,6 +158,7 @@ function Modal({ device, states, onClose }) {
           if (sensorValue === state.parameter) result = state.name;
           break;
         case "idle":
+          console.log(sensorValue, sensorName, state.parameter);
           if (checkIdleState(sensorName, sensorValue, state.parameter)) {
             result = state.name;
           }
