@@ -94,6 +94,7 @@ const DeviceManager = () => {
   // Render the component
   return (
     <div>
+      <h1>Device Manager</h1>
       {devices.map((device) => (
         <div key={device._id} className="unRegDev">
           <h3>{device.name}</h3>

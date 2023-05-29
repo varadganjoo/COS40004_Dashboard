@@ -363,6 +363,7 @@ function Query() {
   // and a list of devices and their sensor data.
   return (
     <div className="Query">
+      <h1>Query</h1>
       <select value={selectedScenario} onChange={handleScenarioChange}>
         <option value="ALL">ALL</option>
         <option value="CAR">CAR</option>
