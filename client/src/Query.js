@@ -169,48 +169,58 @@ function Query() {
 
     if (sensorName === "gps" && Array.isArray(sensorValue)) {
       for (let valueIndex = 0; valueIndex < sensorValue.length; valueIndex++) {
-        let previousValue = history[0].value[valueIndex];
-        let previousTimestamp = history[0].timestamp;
+        let oldestValueWithinTimeframe = history[0].value[valueIndex];
+        let oldestTimestampWithinTimeframe = history[0].timestamp;
 
         for (let i = 1; i < history.length; i++) {
           let currentValue = history[i].value[valueIndex];
           let currentTimestamp = history[i].timestamp;
           let percentageChange =
-            (Math.abs(currentValue - previousValue) / previousValue) * 100;
+            (Math.abs(currentValue - oldestValueWithinTimeframe) /
+              oldestValueWithinTimeframe) *
+            100;
 
-          if (
-            percentageChange > 1 ||
-            currentTimestamp - previousTimestamp > parameter * 1000
+          // Discard readings that are older than `parameter` seconds from the current reading
+          while (
+            currentTimestamp - oldestTimestampWithinTimeframe >
+            parameter * 1000
           ) {
+            oldestTimestampWithinTimeframe = history[i].timestamp;
+            oldestValueWithinTimeframe = history[i].value[valueIndex];
+          }
+
+          if (percentageChange > 1) {
             isIdle = false;
             break;
           }
-
-          previousValue = currentValue;
-          previousTimestamp = currentTimestamp;
         }
         if (!isIdle) break;
       }
     } else {
-      let previousValue = history[0].value;
-      let previousTimestamp = history[0].timestamp;
+      let oldestValueWithinTimeframe = history[0].value;
+      let oldestTimestampWithinTimeframe = history[0].timestamp;
 
       for (let i = 1; i < history.length; i++) {
         let currentValue = history[i].value;
         let currentTimestamp = history[i].timestamp;
         let percentageChange =
-          (Math.abs(currentValue - previousValue) / previousValue) * 100;
+          (Math.abs(currentValue - oldestValueWithinTimeframe) /
+            oldestValueWithinTimeframe) *
+          100;
 
-        if (
-          percentageChange > 1 ||
-          currentTimestamp - previousTimestamp > parameter * 1000
+        // Discard readings that are older than `parameter` seconds from the current reading
+        while (
+          currentTimestamp - oldestTimestampWithinTimeframe >
+          parameter * 1000
         ) {
+          oldestTimestampWithinTimeframe = history[i].timestamp;
+          oldestValueWithinTimeframe = history[i].value;
+        }
+
+        if (percentageChange > 1) {
           isIdle = false;
           break;
         }
-
-        previousValue = currentValue;
-        previousTimestamp = currentTimestamp;
       }
     }
 
@@ -349,7 +359,7 @@ function Query() {
     }
   };
 
-  // The component returns JSX that includes dropdown menus for selecting a scenario, device, and state, 
+  // The component returns JSX that includes dropdown menus for selecting a scenario, device, and state,
   // and a list of devices and their sensor data.
   return (
     <div className="Query">
