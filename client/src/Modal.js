@@ -13,26 +13,39 @@ function Modal({ device, states, onClose }) {
     return data;
   };
 
-  useEffect(() => {
-    // Fetch initial board data
-    fetch("https://cos-40004-dashboard-be-phi.vercel.app/boards")
-      .then((response) => response.json())
-      .then((data) => setBoards(data));
+  const fetchBoardsData = async () => {
+    const response = await fetch(
+      "https://cos-40004-dashboard-be-phi.vercel.app/boards"
+    );
+    const data = await response.json();
+    setBoards(data);
+  };
 
-    // Fetch initial sensor histories
-    const fetchInitialSensorHistories = async () => {
-      const newSensorHistories = { ...sensorHistories };
-      for (let sensor of device.sensors) {
-        let sensorName = sensor.name.toLowerCase();
-        if (!newSensorHistories[sensorName]) {
-          const history = await fetchSensorHistory(device._id, sensorName);
-          newSensorHistories[sensorName] = history;
-        }
+  const fetchAllSensorHistories = async () => {
+    const newSensorHistories = { ...sensorHistories };
+    for (let sensor of device.sensors) {
+      let sensorName = sensor.name.toLowerCase();
+      if (!newSensorHistories[sensorName]) {
+        const history = await fetchSensorHistory(device._id, sensorName);
+        newSensorHistories[sensorName] = history;
       }
-      setSensorHistories(newSensorHistories);
-    };
+    }
+    setSensorHistories(newSensorHistories);
+  };
 
-    fetchInitialSensorHistories();
+  useEffect(() => {
+    // Fetch initial board data and sensor histories
+    fetchBoardsData();
+    fetchAllSensorHistories();
+
+    // Set up polling every 5 seconds
+    const interval = setInterval(() => {
+      fetchBoardsData();
+      fetchAllSensorHistories();
+    }, 1000);
+
+    // Clean up the interval on unmount
+    return () => clearInterval(interval);
   }, [device._id]);
 
   const checkIdleState = async (deviceName, sensorName, parameter) => {

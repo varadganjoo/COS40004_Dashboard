@@ -136,7 +136,7 @@ function Query() {
     };
 
     fetchData();
-    const interval = setInterval(fetchData, 5000); // Poll every 5 seconds.
+    const interval = setInterval(fetchData, 1000); // Poll every 5 seconds.
 
     // Cleanup function to stop the interval when the component is unmounted.
     return () => clearInterval(interval);
@@ -166,74 +166,6 @@ function Query() {
     return device.name.startsWith(selectedScenario + "_");
   });
 
-  // This function checks if a sensor has been idle based on its historical data
-  // const checkIdleState = (sensorName, sensorValue, parameter) => {
-  //   const history = sensorHistories[sensorName];
-  //   if (!history || history.length < 2) {
-  //     return false;
-  //   }
-
-  //   let isIdle = true;
-
-  //   if (sensorName === "gps" && Array.isArray(sensorValue)) {
-  //     for (let valueIndex = 0; valueIndex < sensorValue.length; valueIndex++) {
-  //       let oldestValueWithinTimeframe = history[0].value[valueIndex];
-  //       let oldestTimestampWithinTimeframe = history[0].timestamp;
-
-  //       for (let i = 1; i < history.length; i++) {
-  //         let currentValue = history[i].value[valueIndex];
-  //         let currentTimestamp = history[i].timestamp;
-  //         let percentageChange =
-  //           (Math.abs(currentValue - oldestValueWithinTimeframe) /
-  //             oldestValueWithinTimeframe) *
-  //           100;
-
-  //         // Discard readings that are older than `parameter` seconds from the current reading
-  //         while (
-  //           currentTimestamp - oldestTimestampWithinTimeframe >
-  //           parameter * 1000
-  //         ) {
-  //           oldestTimestampWithinTimeframe = history[i].timestamp;
-  //           oldestValueWithinTimeframe = history[i].value[valueIndex];
-  //         }
-
-  //         if (percentageChange > 1) {
-  //           isIdle = false;
-  //           break;
-  //         }
-  //       }
-  //       if (!isIdle) break;
-  //     }
-  //   } else {
-  //     let oldestValueWithinTimeframe = history[0].value;
-  //     let oldestTimestampWithinTimeframe = history[0].timestamp;
-
-  //     for (let i = 1; i < history.length; i++) {
-  //       let currentValue = history[i].value;
-  //       let currentTimestamp = history[i].timestamp;
-  //       let percentageChange =
-  //         (Math.abs(currentValue - oldestValueWithinTimeframe) /
-  //           oldestValueWithinTimeframe) *
-  //         100;
-
-  //       // Discard readings that are older than `parameter` seconds from the current reading
-  //       while (
-  //         currentTimestamp - oldestTimestampWithinTimeframe >
-  //         parameter * 1000
-  //       ) {
-  //         oldestTimestampWithinTimeframe = history[i].timestamp;
-  //         oldestValueWithinTimeframe = history[i].value;
-  //       }
-
-  //       if (percentageChange > 1) {
-  //         isIdle = false;
-  //         break;
-  //       }
-  //     }
-  //   }
-
-  //   return isIdle;
-  // };
   const checkIdleState = async (
     deviceName,
     sensorName,
