@@ -77,67 +77,46 @@ function AverageComponent({ device_id, sensor_name }) {
 // The Query function is a React component that handles the display and
 // interactions for devices, boards, sensor history, and states.
 // It also provides options for filtering data based on scenario, device, and state.
-function Query() {
-  // Create state variables using useState for storing the fetched data and selected options.
-  // useRef is used for storing mutable values that might change over the lifecycle of the component.
+async function Query() {
   const [devices, setDevices] = useState([]);
   const [boards, setBoards] = useState([]);
-  const [sensorHistories, setSensorHistories] = useState({});
   const [states, setStates] = useState([]);
   const [selectedScenario, setSelectedScenario] = useState("ALL");
   const [selectedDevice, setSelectedDevice] = useState("ALL");
   const [selectedState, setSelectedState] = useState("ALL");
-  const deviceCountRef = useRef(0);
-  const countedDevicesRef = useRef(new Set());
   const [deviceCount, setDeviceCount] = useState(0);
 
-  // The useEffect hook is used to fetch the initial data and set up a WebSocket connection
-  // for live updates once the component is mounted.
   useEffect(() => {
-    fetch("https://cos-40004-dashboard-be-phi.vercel.app/devices")
-      .then((response) => response.json())
-      .then((data) => setDevices(data));
+    const fetchData = async () => {
+      try {
+        const responseDevices = await fetch(
+          "https://cos-40004-dashboard-be-phi.vercel.app/devices"
+        );
+        const dataDevices = await responseDevices.json();
+        setDevices(dataDevices);
 
-    fetch("https://cos-40004-dashboard-be-phi.vercel.app/boards")
-      .then((response) => response.json())
-      .then((data) => setBoards(data));
+        const responseBoards = await fetch(
+          "https://cos-40004-dashboard-be-phi.vercel.app/boards"
+        );
+        const dataBoards = await responseBoards.json();
+        setBoards(dataBoards);
 
-    fetch("https://cos-40004-dashboard-be-phi.vercel.app/states")
-      .then((response) => response.json())
-      .then((data) => setStates(data));
-
-    // Establish a WebSocket connection with the server
-    const socket = io("https://cos-40004-dashboard-be-phi.vercel.app");
-
-    // When a new board data is received, update the state
-    socket.on("board", (board) => {
-      setBoards((boards) => [board, ...boards]);
-
-      // Save sensor histories
-      let newSensorHistories = { ...sensorHistories };
-      for (let sensor of board.sensors) {
-        let sensorName = sensor.name.toLowerCase();
-        if (!newSensorHistories[sensorName]) {
-          newSensorHistories[sensorName] = [];
-        }
-        newSensorHistories[sensorName].push({
-          value: sensor.value,
-          timestamp: new Date(),
-        });
+        const responseStates = await fetch(
+          "https://cos-40004-dashboard-be-phi.vercel.app/states"
+        );
+        const dataStates = await responseStates.json();
+        setStates(dataStates);
+      } catch (error) {
+        console.error("Error:", error);
       }
-      setSensorHistories(newSensorHistories);
-    });
-
-    // Disconnect the socket when the component unmounts
-    return () => {
-      socket.disconnect();
     };
+
+    fetchData();
   }, []);
 
-  // These functions handle changes in the selected scenario, device, and state
   const handleScenarioChange = (event) => {
     setSelectedScenario(event.target.value);
-    setSelectedDevice("ALL"); // reset the device selection when scenario changes
+    setSelectedDevice("ALL");
     setSelectedState("ALL");
   };
 
@@ -148,87 +127,63 @@ function Query() {
 
   const handleStateChange = (event) => {
     setSelectedState(event.target.value);
-    setDeviceCount(0); // Reset the count when a new state is selected
-    countedDevicesRef.current = []; // Also reset the array of counted devices
+    setDeviceCount(0);
   };
 
-  // This function filters devices based on the selected scenario
   const scenarioDevices = devices.filter((device) => {
     if (selectedScenario === "ALL") return true;
     return device.name.startsWith(selectedScenario + "_");
   });
 
   // This function checks if a sensor has been idle based on its historical data
-  const checkIdleState = (sensorName, sensorValue, parameter) => {
-    const history = sensorHistories[sensorName];
-    if (!history || history.length < 2) {
+  const checkIdleState = async (deviceName, sensorName, parameter) => {
+    try {
+      // Convert parameter to milliseconds
+      const paramMillis = parameter * 1000;
+
+      // Get the current date
+      const currentDate = new Date();
+
+      // Calculate the previous date
+      const previousDate = new Date(currentDate.getTime() - paramMillis);
+
+      // Fetch current sensor data
+      const currentSensorDataResponse = await fetch(
+        `https://cos-40004-dashboard-be-phi.vercel.app/${deviceName}/sensors/${sensorName}`
+      );
+      const currentSensorData = await currentSensorDataResponse.json();
+
+      // Fetch sensor data from x seconds ago
+      const previousSensorDataResponse = await fetch(
+        `https://cos-40004-dashboard-be-phi.vercel.app/${deviceName}/sensors/${sensorName}/history?start=${previousDate.toISOString()}&end=${currentDate.toISOString()}`
+      );
+      const previousSensorData = await previousSensorDataResponse.json();
+
+      // If there's no previous data or current data, return false
+      if (!previousSensorData.length || !currentSensorData) return false;
+
+      // Calculate the difference
+      const difference = Math.abs(
+        currentSensorData - previousSensorData[0].value
+      );
+
+      // Calculate the margin (5% of the current value)
+      const margin = 0.05 * currentSensorData;
+
+      // Check if the difference is within the margin
+      if (difference <= margin) {
+        return true;
+      } else {
+        return false;
+      }
+    } catch (error) {
+      console.error(error);
       return false;
     }
-
-    let isIdle = true;
-
-    if (sensorName === "gps" && Array.isArray(sensorValue)) {
-      for (let valueIndex = 0; valueIndex < sensorValue.length; valueIndex++) {
-        let oldestValueWithinTimeframe = history[0].value[valueIndex];
-        let oldestTimestampWithinTimeframe = history[0].timestamp;
-
-        for (let i = 1; i < history.length; i++) {
-          let currentValue = history[i].value[valueIndex];
-          let currentTimestamp = history[i].timestamp;
-          let percentageChange =
-            (Math.abs(currentValue - oldestValueWithinTimeframe) /
-              oldestValueWithinTimeframe) *
-            100;
-
-          // Discard readings that are older than `parameter` seconds from the current reading
-          while (
-            currentTimestamp - oldestTimestampWithinTimeframe >
-            parameter * 1000
-          ) {
-            oldestTimestampWithinTimeframe = history[i].timestamp;
-            oldestValueWithinTimeframe = history[i].value[valueIndex];
-          }
-
-          if (percentageChange > 1) {
-            isIdle = false;
-            break;
-          }
-        }
-        if (!isIdle) break;
-      }
-    } else {
-      let oldestValueWithinTimeframe = history[0].value;
-      let oldestTimestampWithinTimeframe = history[0].timestamp;
-
-      for (let i = 1; i < history.length; i++) {
-        let currentValue = history[i].value;
-        let currentTimestamp = history[i].timestamp;
-        let percentageChange =
-          (Math.abs(currentValue - oldestValueWithinTimeframe) /
-            oldestValueWithinTimeframe) *
-          100;
-
-        // Discard readings that are older than `parameter` seconds from the current reading
-        while (
-          currentTimestamp - oldestTimestampWithinTimeframe >
-          parameter * 1000
-        ) {
-          oldestTimestampWithinTimeframe = history[i].timestamp;
-          oldestValueWithinTimeframe = history[i].value;
-        }
-
-        if (percentageChange > 1) {
-          isIdle = false;
-          break;
-        }
-      }
-    }
-
-    return isIdle;
   };
 
   // This function checks the state for each sensor and updates the device count for the selected state
-  const checkStateForIndividualSensor = (
+  const checkStateForIndividualSensor = async (
     deviceName,
     sensorName,
     sensorValue
@@ -241,7 +196,6 @@ function Query() {
     });
 
     let result = "Default";
-    let isDeviceCounted = false; // New variable to track if a device has already been counted for the selected state
 
     for (let state of matchingStates) {
       let parameter;
@@ -265,7 +219,7 @@ function Query() {
           if (sensorValue === parameter) result = state.name;
           break;
         case "idle":
-          if (checkIdleState(sensorName, sensorValue, parameter)) {
+          if (await checkIdleState(deviceName, sensorName, parameter)) {
             result = state.name;
           }
           break;
@@ -274,12 +228,12 @@ function Query() {
       }
     }
 
-    if (
-      result === selectedState &&
-      !countedDevicesRef.current.includes(deviceName)
-    ) {
-      countedDevicesRef.current.push(deviceName);
-      setDeviceCount((prevCount) => prevCount + 1); // Increment the device count
+    if (result === selectedState) {
+      // countedDevicesRef is a React ref object holding an array of device names
+      if (!countedDevicesRef.current.includes(deviceName)) {
+        countedDevicesRef.current.push(deviceName);
+        setDeviceCount((prevCount) => prevCount + 1);
+      }
     }
 
     return result;
