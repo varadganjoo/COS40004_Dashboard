@@ -318,7 +318,7 @@ function Query() {
             Sensor Value:{" "}
             {sensor.name === "gps"
               ? `${sensor.value[0]}, ${sensor.value[1]}`
-              : val}
+              : sensor.value}
           </span>
 
           <span>Sensor State: {state}</span>
