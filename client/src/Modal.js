@@ -189,7 +189,9 @@ function Modal({ device, states, onClose }) {
                     return (
                       <tr key={`${sensor.name}-${index}`}>
                         <td>{sensorName}</td>
-                        <td>{val}</td>
+                        <td>
+                          {sensorName === "gps" ? `${val[0]}, ${val[1]}` : val}
+                        </td>
                         <td>{state}</td>
                       </tr>
                     );
@@ -202,7 +204,7 @@ function Modal({ device, states, onClose }) {
                   return (
                     <tr key={`${sensor.name}-${sensorIndex}`}>
                       <td>{sensor.name}</td>
-                      <td>{sensor.value}</td>
+                      <td>{sensor.name === "gps" ? `${val[0]}, ${val[1]}` : val}</td>
                       <td>{state}</td>
                     </tr>
                   );

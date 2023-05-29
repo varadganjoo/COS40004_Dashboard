@@ -11,7 +11,7 @@ function AverageComponent({ device_id, sensor_name }) {
     setTimePeriod(event.target.value);
   };
 
-  console.log(sensor_name)
+  console.log(sensor_name);
 
   const handleAverageCalculation = () => {
     if (sensor_name === "gps") {
@@ -288,7 +288,11 @@ function Query() {
         return (
           <div key={`${sensor.name}-${index}`}>
             <span>Sensor Name: {sensorName}</span>
-            <span>Sensor Value: {val}</span>
+            <span>
+              Sensor Value:{" "}
+              {sensorName === "gps" ? `${val[0]}, ${val[1]}` : val}
+            </span>
+
             <span>Sensor State: {state}</span>
             <AverageComponent
               device_id={board.device_id}
@@ -310,7 +314,10 @@ function Query() {
       return (
         <div key={index}>
           <span>Sensor Name: {sensor.name}</span>
-          <span>Sensor Value: {sensor.value}</span>
+          <span>
+            Sensor Value: {sensorName === "gps" ? `${val[0]}, ${val[1]}` : val}
+          </span>
+
           <span>Sensor State: {state}</span>
           <AverageComponent
             device_id={board.device_id}
