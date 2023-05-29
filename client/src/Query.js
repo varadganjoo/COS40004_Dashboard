@@ -106,19 +106,24 @@ function Query() {
       .then((response) => response.json())
       .then((data) => setStates(data));
 
-      const fetchInitialSensorHistories = async () => {
-        const newSensorHistories = { ...sensorHistories };
-        for (let sensor of device.sensors) {
-          let sensorName = sensor.name.toLowerCase();
-          if (!newSensorHistories[sensorName]) {
-            const history = await fetchSensorHistory(device._id, sensorName);
-            newSensorHistories[sensorName] = history;
-          }
+    const fetchSensorHistories = async () => {
+      const newSensorHistories = { ...sensorHistories };
+      for (const device of devices) {
+        for (const sensor of device.sensors) {
+          const response = await fetch(
+            `https://cos-40004-dashboard-be-phi.vercel.app/${device._id}/sensors/${sensor.name}/history`
+          );
+          const data = await response.json();
+          newSensorHistories[sensor.name.toLowerCase()] = data.map((item) => ({
+            value: item.value,
+            timestamp: new Date(item.timestamp),
+          }));
         }
-        setSensorHistories(newSensorHistories);
-      };
-  
-      fetchInitialSensorHistories();
+      }
+      setSensorHistories(newSensorHistories);
+    };
+
+    fetchSensorHistories();
   }, []);
 
   // These functions handle changes in the selected scenario, device, and state
@@ -146,38 +151,122 @@ function Query() {
   });
 
   // This function checks if a sensor has been idle based on its historical data
-  const checkIdleState = async (deviceName, sensorName, parameter) => {
-    const now = new Date();
-    const then = new Date(now.getTime() - parameter * 1000); // x seconds ago
+  // const checkIdleState = (sensorName, sensorValue, parameter) => {
+  //   const history = sensorHistories[sensorName];
+  //   if (!history || history.length < 2) {
+  //     return false;
+  //   }
 
-    // Convert to ISO format and remove the 'Z' at the end to fit with MongoDB's date format
-    const nowISO = now.toISOString().slice(0, -1);
-    const thenISO = then.toISOString().slice(0, -1);
+  //   let isIdle = true;
 
+  //   if (sensorName === "gps" && Array.isArray(sensorValue)) {
+  //     for (let valueIndex = 0; valueIndex < sensorValue.length; valueIndex++) {
+  //       let oldestValueWithinTimeframe = history[0].value[valueIndex];
+  //       let oldestTimestampWithinTimeframe = history[0].timestamp;
+
+  //       for (let i = 1; i < history.length; i++) {
+  //         let currentValue = history[i].value[valueIndex];
+  //         let currentTimestamp = history[i].timestamp;
+  //         let percentageChange =
+  //           (Math.abs(currentValue - oldestValueWithinTimeframe) /
+  //             oldestValueWithinTimeframe) *
+  //           100;
+
+  //         // Discard readings that are older than `parameter` seconds from the current reading
+  //         while (
+  //           currentTimestamp - oldestTimestampWithinTimeframe >
+  //           parameter * 1000
+  //         ) {
+  //           oldestTimestampWithinTimeframe = history[i].timestamp;
+  //           oldestValueWithinTimeframe = history[i].value[valueIndex];
+  //         }
+
+  //         if (percentageChange > 1) {
+  //           isIdle = false;
+  //           break;
+  //         }
+  //       }
+  //       if (!isIdle) break;
+  //     }
+  //   } else {
+  //     let oldestValueWithinTimeframe = history[0].value;
+  //     let oldestTimestampWithinTimeframe = history[0].timestamp;
+
+  //     for (let i = 1; i < history.length; i++) {
+  //       let currentValue = history[i].value;
+  //       let currentTimestamp = history[i].timestamp;
+  //       let percentageChange =
+  //         (Math.abs(currentValue - oldestValueWithinTimeframe) /
+  //           oldestValueWithinTimeframe) *
+  //         100;
+
+  //       // Discard readings that are older than `parameter` seconds from the current reading
+  //       while (
+  //         currentTimestamp - oldestTimestampWithinTimeframe >
+  //         parameter * 1000
+  //       ) {
+  //         oldestTimestampWithinTimeframe = history[i].timestamp;
+  //         oldestValueWithinTimeframe = history[i].value;
+  //       }
+
+  //       if (percentageChange > 1) {
+  //         isIdle = false;
+  //         break;
+  //       }
+  //     }
+  //   }
+
+  //   return isIdle;
+  // };
+  const checkIdleState = async (
+    deviceName,
+    sensorName,
+    sensorValue,
+    parameter
+  ) => {
     try {
-      const currentDataResponse = await fetch(
-        `https://cos-40004-dashboard-be-phi.vercel.app/${deviceName}/sensors/${sensorName}/history?timestamp=${nowISO}`
+      // Fetch the historical data from your API
+      const response = await fetch(
+        `https://cos-40004-dashboard-be-phi.vercel.app/${deviceName}/sensors/${sensorName}/history`
       );
-      const pastDataResponse = await fetch(
-        `https://cos-40004-dashboard-be-phi.vercel.app/${deviceName}/sensors/${sensorName}/history?timestamp=${thenISO}`
-      );
+      const history = await response.json();
 
-      const currentData = await currentDataResponse.json();
-      const pastData = await pastDataResponse.json();
-
-      if (
-        currentData.length > 0 &&
-        pastData.length > 0 &&
-        Math.abs(
-          (currentData[0].value - pastData[0].value) / pastData[0].value
-        ) <= 0.05
-      ) {
-        return true;
-      } else {
+      if (!history || history.length < 2) {
         return false;
       }
+
+      let isIdle = true;
+
+      let oldestValueWithinTimeframe = history[0].value;
+      let oldestTimestampWithinTimeframe = new Date(history[0].timestamp);
+
+      for (let i = 1; i < history.length; i++) {
+        let currentValue = history[i].value;
+        let currentTimestamp = new Date(history[i].timestamp);
+        let percentageChange =
+          (Math.abs(currentValue - oldestValueWithinTimeframe) /
+            oldestValueWithinTimeframe) *
+          100;
+
+        // Discard readings that are older than `parameter` seconds from the current reading
+        while (
+          currentTimestamp - oldestTimestampWithinTimeframe >
+          parameter * 1000
+        ) {
+          oldestTimestampWithinTimeframe = new Date(history[i].timestamp);
+          oldestValueWithinTimeframe = history[i].value;
+        }
+
+        if (percentageChange > 5) {
+          // Change the value here to your desired threshold (5% was mentioned)
+          isIdle = false;
+          break;
+        }
+      }
+
+      return isIdle;
     } catch (error) {
-      console.log(error);
+      console.error(error);
       return false;
     }
   };

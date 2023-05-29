@@ -35,64 +35,6 @@ function Modal({ device, states, onClose }) {
     fetchInitialSensorHistories();
   }, [device._id]);
 
-  // const checkIdleState = (sensorName, sensorValue, parameter) => {
-  //   const history = sensorHistories[sensorName];
-  //   if (!history || history.length < 2) {
-  //     return false;
-  //   }
-
-  //   let isIdle = true;
-
-  //   if (sensorName === "gps" && Array.isArray(sensorValue)) {
-  //     for (let valueIndex = 0; valueIndex < sensorValue.length; valueIndex++) {
-  //       let previousValue = history[0].value[valueIndex];
-  //       let previousTimestamp = history[0].timestamp;
-
-  //       for (let i = 1; i < history.length; i++) {
-  //         let currentValue = history[i].value[valueIndex];
-  //         let currentTimestamp = history[i].timestamp;
-  //         let percentageChange =
-  //           (Math.abs(currentValue - previousValue) / previousValue) * 100;
-
-  //         if (
-  //           percentageChange > 1 ||
-  //           currentTimestamp - previousTimestamp > parameter * 1000
-  //         ) {
-  //           isIdle = false;
-  //           break;
-  //         }
-
-  //         previousValue = currentValue;
-  //         previousTimestamp = currentTimestamp;
-  //       }
-  //       if (!isIdle) break;
-  //     }
-  //   } else {
-  //     let previousValue = history[0].value;
-  //     let previousTimestamp = history[0].timestamp;
-
-  //     for (let i = 1; i < history.length; i++) {
-  //       let currentValue = history[i].value;
-  //       let currentTimestamp = history[i].timestamp;
-  //       let percentageChange =
-  //         (Math.abs(currentValue - previousValue) / previousValue) * 100;
-
-  //       if (
-  //         percentageChange > 1 ||
-  //         currentTimestamp - previousTimestamp > parameter * 1000
-  //       ) {
-  //         isIdle = false;
-  //         break;
-  //       }
-
-  //       previousValue = currentValue;
-  //       previousTimestamp = currentTimestamp;
-  //     }
-  //   }
-
-  //   return isIdle;
-  // };
-
   const checkIdleState = async (deviceName, sensorName, parameter) => {
     const now = new Date();
     const then = new Date(now.getTime() - parameter * 1000); // x seconds ago
