@@ -182,4 +182,24 @@ router.get(
   }
 );
 
+// Fetch history of a particular sensor for a specific device
+router.get("/:deviceId/sensors/:sensorName/history", async (req, res) => {
+  const { deviceId, sensorName } = req.params;
+
+  try {
+    const sensorData = await Board.find({ device_id: deviceId })
+      .sort({ timestamp: -1 }) // sort by timestamp in descending order to get the recent entries first
+      .limit(10) // limiting the number of documents to 10. Adjust according to your needs.
+      .select(`sensors.$.${sensorName}`); // select only the data of the specific sensor
+
+    if (sensorData) {
+      res.json(sensorData);
+    } else {
+      res.status(404).json({ message: "No data found." });
+    }
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
 module.exports = router;

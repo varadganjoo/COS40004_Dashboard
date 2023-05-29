@@ -6,40 +6,34 @@ function Modal({ device, states, onClose }) {
   const [boards, setBoards] = useState([]);
   const [sensorHistories, setSensorHistories] = useState({});
 
+  const fetchSensorHistory = async (deviceId, sensorName) => {
+    const response = await fetch(
+      `https://cos-40004-dashboard-be-phi.vercel.app/boards/${deviceId}/sensors/${sensorName}/history`
+    );
+    const data = await response.json();
+    return data;
+  };
+
   useEffect(() => {
-    // Establish a WebSocket connection with the server
-    const socket = io("https://cos-40004-dashboard-be-phi.vercel.app");
-
-    // When a new board data is received, update the state
-    socket.on("board", (board) => {
-      if (board.device_id === device._id) {
-        setBoards((boards) => [board, ...boards]);
-
-        // Save sensor histories
-        let newSensorHistories = { ...sensorHistories };
-        for (let sensor of board.sensors) {
-          let sensorName = sensor.name.toLowerCase();
-          if (!newSensorHistories[sensorName]) {
-            newSensorHistories[sensorName] = [];
-          }
-          newSensorHistories[sensorName].push({
-            value: sensor.value,
-            timestamp: new Date(),
-          });
-        }
-        setSensorHistories(newSensorHistories);
-      }
-    });
-
     // Fetch initial board data
     fetch("https://cos-40004-dashboard-be-phi.vercel.app/boards")
       .then((response) => response.json())
       .then((data) => setBoards(data));
 
-    // Disconnect the socket when the component unmounts
-    return () => {
-      socket.disconnect();
+    // Fetch initial sensor histories
+    const fetchInitialSensorHistories = async () => {
+      const newSensorHistories = { ...sensorHistories };
+      for (let sensor of device.sensors) {
+        let sensorName = sensor.name.toLowerCase();
+        if (!newSensorHistories[sensorName]) {
+          const history = await fetchSensorHistory(device._id, sensorName);
+          newSensorHistories[sensorName] = history;
+        }
+      }
+      setSensorHistories(newSensorHistories);
     };
+
+    fetchInitialSensorHistories();
   }, [device._id]);
 
   const checkIdleState = (sensorName, sensorValue, parameter) => {
